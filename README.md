@@ -21,7 +21,7 @@ A simple Python application that allows you to record live radio streams from iH
 
 1. Clone the repository to your local machine:
    ```bash
-   git clone https://github.com/yourusername/iHeartRadio-Recorder.git
+   git clone https://github.com/Ghosty-Tongue/iHeartRadio-Recorder.git
    cd iHeartRadio-Recorder
    ```
 
@@ -36,7 +36,7 @@ A simple Python application that allows you to record live radio streams from iH
 
 4. Run the application:
    ```bash
-   python app.py
+   python recorder.py
    ```
 
 ### Usage
