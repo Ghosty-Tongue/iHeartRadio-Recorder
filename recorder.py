@@ -4,7 +4,6 @@ import requests
 import threading
 import re
 import os
-import hashlib
 import time
 from pydub import AudioSegment
 from tkinter import ttk
@@ -59,7 +58,11 @@ class iHeartRadioRecorder:
         self.developer_label = tk.Label(root, text="Developed by Ghosty Tongue", font=("Helvetica", 8), fg="gray")
         self.developer_label.pack(side=tk.BOTTOM, pady=10)
 
+        # Log file path
+        self.log_file_path = "recording_log.txt"
+
     def load_stations(self):
+        print("Loading stations...")
         try:
             response = requests.get("https://raw.githubusercontent.com/Ghosty-Tongue/public-api/refs/heads/main/IHR/stations.json")
             stations_data = response.json()
@@ -68,6 +71,7 @@ class iHeartRadioRecorder:
                 self.stations.append(station)
                 self.station_tree.insert("", "end", values=(station['name'], station['description']))
 
+            print(f"Loaded {len(stations_data)} stations.")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load stations: {str(e)}")
 
@@ -82,6 +86,7 @@ class iHeartRadioRecorder:
         selected_station = self.stations[self.station_tree.index(selected_item[0])]
         station_name = selected_station['name']
 
+        print(f"Started recording station: {station_name}")
         self.record_button.config(state=tk.DISABLED)
         self.stop_button.config(state=tk.NORMAL)
         self.status_label.config(text=f"Recording {station_name}...")
@@ -104,7 +109,6 @@ class iHeartRadioRecorder:
         self.stop_button.config(state=tk.DISABLED)
 
         print("Recording stopped.")
-
         threading.Thread(target=self.combine_audio_files).start()
 
     def update_timer(self):
@@ -171,8 +175,12 @@ class iHeartRadioRecorder:
                 if i == len(extinf_lines) - 1:
                     self.current_track_title = title.strip()
                     self.current_track_artist = artist.strip()
-                    self.current_track_label.config(text=f"Current Track: {self.current_track_title} - {self.current_track_artist}")
-                
+                    if self.current_track_title != self.previous_track_title or self.current_track_artist != self.previous_track_artist:
+                        self.current_track_label.config(text=f"Current Track: {self.current_track_title} - {self.current_track_artist}")
+                        self.previous_track_title = self.current_track_title
+                        self.previous_track_artist = self.current_track_artist
+                        self.log_current_track()
+
                 if self.is_recording and not self.stop_flag:
                     audio_url = re.search(r'(https://.*\.aac)', stream_m3u8).group(1)
                     self.download_aac_file(audio_url)
@@ -181,25 +189,46 @@ class iHeartRadioRecorder:
             self.status_label.config(text=f"Failed to process stream: {str(e)}")
 
     def download_aac_file(self, audio_url):
-        try:
-            response = requests.get(audio_url, stream=True)
-            file_name = os.path.basename(audio_url)
-            file_path = os.path.join(self.cache_dir, file_name)
+        def retry_request():
+            for attempt in range(7):
+                try:
+                    response = requests.get(audio_url, stream=True)
+                    file_name = os.path.basename(audio_url)
+                    file_path = os.path.join(self.cache_dir, file_name)
 
-            with open(file_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=1024):
-                    if chunk:
-                        f.write(chunk)
+                    with open(file_path, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=1024):
+                            if chunk:
+                                f.write(chunk)
 
-            self.downloading_aac_files.add(file_path)
+                    self.downloading_aac_files.add(file_path)
+                    break
+                except Exception as e:
+                    print(f"Error downloading {audio_url}: {e}")
+                    time.sleep(1)
 
-        except Exception as e:
-            self.status_label.config(text=f"Failed to download file: {str(e)}")
+        threading.Thread(target=retry_request).start()
+
+    def log_current_track(self):
+        if self.start_time:
+            elapsed_time = time.time() - self.start_time
+            minutes = int(elapsed_time // 60)
+            seconds = int(elapsed_time % 60)
+            end_time_str = f"{minutes:02d}:{seconds:02d}"
+
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            track_info = f"{timestamp} - {end_time_str} - {self.current_track_title} by {self.current_track_artist}"
+
+            with open(self.log_file_path, "a") as log_file:
+                log_file.write(track_info + "\n")
 
     def combine_audio_files(self):
         try:
+            print("Combining audio files...")
             valid_files = [
-                f for f in self.downloading_aac_files if f.endswith('.aac')
+                os.path.join(self.cache_dir, f)
+                for f in os.listdir(self.cache_dir)
+                if f.endswith('.aac')
             ]
             sorted_aac_files = sorted(valid_files, key=lambda f: int(os.path.basename(f).split('.')[0]))
 
@@ -235,6 +264,8 @@ class iHeartRadioRecorder:
         self.downloading_aac_files = set()
         self.current_track_title = None
         self.current_track_artist = None
+        self.previous_track_title = None
+        self.previous_track_artist = None
         self.current_track_label.config(text="Current Track: N/A")
         self.clear_cache()
         self.timer_label.config(text="00:00")
