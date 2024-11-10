@@ -72,6 +72,8 @@ class iHeartRadioRecorder:
             messagebox.showerror("Error", f"Failed to load stations: {str(e)}")
 
     def start_recording(self):
+        self.clear_previous_recording()
+
         selected_item = self.station_tree.selection()
         if not selected_item:
             messagebox.showwarning("Selection", "Please select a station first.")
@@ -220,16 +222,31 @@ class iHeartRadioRecorder:
                 for file_path in self.downloading_aac_files:
                     if os.path.exists(file_path):
                         os.remove(file_path)
-
-                print("Audio combined and saved.")
-            else:
-                print("No valid audio files to combine.")
-
         except Exception as e:
-            self.status_label.config(text=f"Failed to combine audio files: {str(e)}")
-            print(f"Failed to combine audio files: {str(e)}")
+            self.status_label.config(text=f"Error combining audio: {str(e)}")
 
-if __name__ == "__main__":
+    def clear_previous_recording(self):
+        self.is_recording = False
+        self.stop_flag = True
+        self.downloading_aac_files = set()
+        self.current_track_title = None
+        self.current_track_artist = None
+        self.current_track_label.config(text="Current Track: N/A")
+        self.clear_cache()
+        self.timer_label.config(text="00:00")
+        self.cache_label.config(text="Cache Size: 0 KB")
+        self.status_label.config(text="Select a station and press 'Record' to start")
+
+    def clear_cache(self):
+        for file in os.listdir(self.cache_dir):
+            file_path = os.path.join(self.cache_dir, file)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+
+def run():
     root = tk.Tk()
     app = iHeartRadioRecorder(root)
     root.mainloop()
+
+if __name__ == "__main__":
+    run()
