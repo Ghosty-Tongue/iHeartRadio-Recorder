@@ -9,6 +9,7 @@ A simple Python application that allows you to record live radio streams from iH
 - **Track Info Display**: Displays the current track's title and artist information.
 - **Cache Management**: Shows the size of the audio cache and removes downloaded files after recording.
 - **File Naming**: Automatically saves the recording as an MP3 file named after the station, including the date and time of recording.
+- **Play Recorded Audio**: After recording, you can play back the recorded station audio.
 
 ### Requirements
 
@@ -45,6 +46,11 @@ A simple Python application that allows you to record live radio streams from iH
 2. Select a station from the list of available stations.
 3. Click on "Record" to start recording the station's live stream.
 4. Click "Stop" to stop recording. The file will be saved in the current directory with the name `<StationName>_<YYYY-MM-DD_HH-MM-SS>.mp3`.
+5. After recording, the application will provide the option to play back the recorded audio.
+
+### Example Recorded Audio
+
+You can listen to a sample recorded audio from the application [here](https://openrbxl.com/assets/demo.mp3). This file serves as an example of what your recordings will sound like.
 
 ### License
 
