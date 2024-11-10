@@ -222,8 +222,12 @@ class iHeartRadioRecorder:
                 for file_path in self.downloading_aac_files:
                     if os.path.exists(file_path):
                         os.remove(file_path)
+                print("Audio combined and saved.")
+            else:
+                print("No valid audio files to combine.")
         except Exception as e:
-            self.status_label.config(text=f"Error combining audio: {str(e)}")
+            self.status_label.config(text=f"Failed to combine audio files: {str(e)}")
+            print(f"Failed to combine audio files: {str(e)}")
 
     def clear_previous_recording(self):
         self.is_recording = False
