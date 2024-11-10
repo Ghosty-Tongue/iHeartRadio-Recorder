@@ -50,7 +50,7 @@ A simple Python application that allows you to record live radio streams from iH
 
 ### Example Recorded Audio
 
-You can listen to a sample recorded audio from the application [here](https://openrbxl.com/assets/demo.mp3). This file serves as an example of what your recordings will sound like.
+You can listen to a sample recorded audio from the application [/assets/demo.mp3](https://openrbxl.com/assets/demo.mp3). This file serves as an example of what your recordings will sound like.
 
 ### License
 
