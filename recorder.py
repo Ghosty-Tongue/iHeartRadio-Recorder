@@ -181,65 +181,76 @@ class iHeartRadioRecorder:
             self.status_label.config(text=f"Failed to process stream: {str(e)}")
 
     def download_aac_file(self, audio_url):
-        retries = 7
-        for attempt in range(retries):
-            try:
-                response = requests.get(audio_url, stream=True, timeout=10)  
-                if response.status_code == 200:
-                    file_name = os.path.basename(audio_url)
-                    file_path = os.path.join(self.cache_dir, file_name)
+        try:
+            response = requests.get(audio_url, stream=True)
+            file_name = os.path.basename(audio_url)
+            file_path = os.path.join(self.cache_dir, file_name)
 
-                    with open(file_path, 'wb') as f:
-                        for chunk in response.iter_content(chunk_size=1024):
-                            if chunk:
-                                f.write(chunk)
+            with open(file_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=1024):
+                    if chunk:
+                        f.write(chunk)
 
-                    self.downloading_aac_files.add(file_path)
-                    print(f"Downloaded: {file_name}")
-                    return  
+            self.downloading_aac_files.add(file_path)
 
-                else:
-                    raise Exception(f"Failed to download file, status code: {response.status_code}")
-
-            except requests.exceptions.RequestException as e:
-                if attempt < retries - 1:
-                    print(f"Attempt {attempt + 1} failed: {str(e)}. Retrying...")
-                    time.sleep(0.2)  
-                else:
-                    self.status_label.config(text=f"Failed to download file after {retries} attempts: {str(e)}")
-                    print(f"Failed to download file after {retries} attempts: {str(e)}")
-                    return  
+        except Exception as e:
+            self.status_label.config(text=f"Failed to download file: {str(e)}")
 
     def combine_audio_files(self):
         try:
             valid_files = [
-                f for f in self.downloading_aac_files if os.path.exists(f) and f.endswith(".aac")
+                f for f in self.downloading_aac_files if f.endswith('.aac')
             ]
+            sorted_aac_files = sorted(valid_files, key=lambda f: int(os.path.basename(f).split('.')[0]))
 
-            if valid_files:
-                audio = AudioSegment.from_file(valid_files[0], format="aac")
-                for file in valid_files[1:]:
-                    audio += AudioSegment.from_file(file, format="aac")
+            audio_segments = []
+            for file_path in sorted_aac_files:
+                audio_segment = AudioSegment.from_file(file_path, format="aac")
+                audio_segments.append(audio_segment)
 
-                output_file = os.path.join(self.cache_dir, f"combined_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3")
-                audio.export(output_file, format="mp3")
-                print(f"Recording combined into: {output_file}")
+            if audio_segments:
+                print("Combining audio files...")
+                combined = sum(audio_segments)
+                
+                station_name = self.stations[self.station_tree.index(self.station_tree.selection()[0])]['name']
+                current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                file_name = f"{station_name}_{current_time}.mp3"
+                
+                combined.export(file_name, format="mp3")
+                self.status_label.config(text=f"Recording saved as '{file_name}'")
 
-                self.status_label.config(text="Recording complete.")
-                self.clear_previous_recording()
-
+                for file_path in self.downloading_aac_files:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                print("Audio combined and saved.")
             else:
-                self.status_label.config(text="No valid audio files to combine.")
+                print("No valid audio files to combine.")
         except Exception as e:
             self.status_label.config(text=f"Failed to combine audio files: {str(e)}")
+            print(f"Failed to combine audio files: {str(e)}")
 
     def clear_previous_recording(self):
+        self.is_recording = False
+        self.stop_flag = True
+        self.downloading_aac_files = set()
+        self.current_track_title = None
+        self.current_track_artist = None
+        self.current_track_label.config(text="Current Track: N/A")
+        self.clear_cache()
+        self.timer_label.config(text="00:00")
+        self.cache_label.config(text="Cache Size: 0 KB")
+        self.status_label.config(text="Select a station and press 'Record' to start")
+
+    def clear_cache(self):
         for file in os.listdir(self.cache_dir):
             file_path = os.path.join(self.cache_dir, file)
-            if file.endswith(".aac"):
+            if os.path.isfile(file_path):
                 os.remove(file_path)
-        self.downloading_aac_files.clear()
 
-root = tk.Tk()
-app = iHeartRadioRecorder(root)
-root.mainloop()
+def run():
+    root = tk.Tk()
+    app = iHeartRadioRecorder(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    run()
